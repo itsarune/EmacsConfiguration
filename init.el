@@ -39,7 +39,12 @@
         (indent-region-custom 4) ; region was selected, call indent-region
         (insert "    ") ; else insert four spaces as expected
     )))
-)
+   )
+
+(setq-default tab-width 4)
+
+(setq-default whitespace-line-column 80
+	      whitespace-style       '(face lines-tail))
 
 (global-set-key (kbd "<backtab>") 'untab-region)
 (global-set-key (kbd "<tab>") 'tab-region)
@@ -50,7 +55,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(dumb-jump exec-path-from-shell yasnippet-snippets irony-eldoc irony bazel-mode yasnippet request evil el-get)))
+   '(jupyter dumb-jump exec-path-from-shell yasnippet-snippets irony-eldoc irony bazel-mode yasnippet request evil el-get)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -63,6 +68,9 @@
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
 
+;; Initializes the package infrastructure
+(package-initialize)
+
 (require 'use-package)
 (use-package yasnippet
 	     :ensure t
@@ -72,9 +80,6 @@
 	     (yas-reload-all))
 (yas-global-mode 1)
 (define-key yas-minor-mode-map (kbd "C-c y") 'yas-expand)
-
-;; Initializes the package infrastructure
-(package-initialize)
  
 ;; If there are no archived package contents, refresh them
 (when (not package-archive-contents)
@@ -91,7 +96,16 @@
     ein
     magit
     py-autopep8
-    )
+    lsp-mode
+	lsp-treemacs
+	helm-lsp
+	projectile
+	hydra
+	company
+	avy
+	which-key
+	helm-xref
+	dap-mode)
 )
 
 ;; Scans the list in myPackages
@@ -135,12 +149,111 @@
 (require 'semantic/sb)
 (semantic-mode 1)
 
-(defun cedet-hooks ()
-  (local-set-key [(control return)] 'semantic-ia-complete-symbol)
-  (local-set-key "\C-c?" 'semantic-ia-complete-symbol-menu)
-  (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
-  (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle))
-(add-hook 'c-mode-common-hook 'cedet-hooks)
+;(defun cedet-hooks ()
+;  (local-set-key [(control return)] 'semantic-ia-complete-symbol)
+;  (local-set-key "\C-c?" 'semantic-ia-complete-symbol-menu)
+;  (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
+;  (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle))
+;(add-hook 'c-mode-common-hook 'cedet-hooks)
 
 (add-hook 'xref-backend-functions #'dumb-jump-xref-activate)
+
+(helm-mode)
+(require 'helm-xref)
+(define-key global-map [remap find-file] #'helm-find-files)
+(define-key global-map [remap execute-extended-command] #'helm-M-x)
+(define-key global-map [remap switch-to-buffer] #'helm-mini)
+
+(which-key-mode)
+(use-package lsp-mode
+    :hook (((c-mode c++-mode objc-mode) . lsp)
+           (lsp-mode . lsp-enable-which-key-integration))
+    :commands lsp
+    :config
+    (setq lsp-prefer-flymake nil))
+
+(setq gc-cons-threshold (* 100 1024 1024)
+      read-process-output-max (* 1024 1024)
+      treemacs-space-between-root-nodes nil
+      company-idle-delay 0.0
+      company-minimum-prefix-length 1
+      lsp-idle-delay 0.1 ;; clangd is fast
+      ;; be more ide-ish
+      lsp-headerline-breadcrumb-enable t)
+
+(with-eval-after-load 'lsp-mode
+  (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
+  (require 'dap-cpptools))
+
+(use-package treemacs
+  :ensure t
+  :defer t
+  :init
+  (with-eval-after-load 'winum
+    (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
+  :config
+  (progn
+    (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
+          treemacs-deferred-git-apply-delay      0.5
+          treemacs-directory-name-transformer    #'identity
+          treemacs-display-in-side-window        t
+          treemacs-eldoc-display                 t
+          treemacs-file-event-delay              5000
+          treemacs-file-extension-regex          treemacs-last-period-regex-value
+          treemacs-file-follow-delay             0.2
+          treemacs-file-name-transformer         #'identity
+          treemacs-follow-after-init             t
+          treemacs-git-command-pipe              ""
+          treemacs-goto-tag-strategy             'refetch-index
+          treemacs-indentation                   2
+          treemacs-indentation-string            " "
+          treemacs-is-never-other-window         nil
+          treemacs-max-git-entries               5000
+          treemacs-missing-project-action        'ask
+          treemacs-move-forward-on-expand        nil
+          treemacs-no-png-images                 nil
+          treemacs-no-delete-other-windows       t
+          treemacs-project-follow-cleanup        nil
+          treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+          treemacs-position                      'left
+          treemacs-read-string-input             'from-child-frame
+          treemacs-recenter-distance             0.1
+          treemacs-recenter-after-file-follow    nil
+          treemacs-recenter-after-tag-follow     nil
+          treemacs-recenter-after-project-jump   'always
+          treemacs-recenter-after-project-expand 'on-distance
+          treemacs-show-cursor                   nil
+          treemacs-show-hidden-files             t
+          treemacs-silent-filewatch              nil
+          treemacs-silent-refresh                nil
+          treemacs-sorting                       'alphabetic-asc
+          treemacs-space-between-root-nodes      t
+          treemacs-tag-follow-cleanup            t
+          treemacs-tag-follow-delay              1.5
+          treemacs-user-mode-line-format         nil
+          treemacs-user-header-line-format       nil
+          treemacs-width                         35
+          treemacs-workspace-switch-cleanup      nil)
+
+    ;; The default width and height of the icons is 22 pixels. If you are
+    ;; using a Hi-DPI display, uncomment this to double the icon size.
+    ;;(treemacs-resize-icons 44)
+
+    (treemacs-follow-mode t)
+    (treemacs-filewatch-mode t)
+    (treemacs-fringe-indicator-mode 'always)
+    (pcase (cons (not (null (executable-find "git")))
+                 (not (null treemacs-python-executable)))
+      (`(t . t)
+       (treemacs-git-mode 'deferred))
+      (`(t . _)
+       (treemacs-git-mode 'simple))))
+  :bind
+  (:map global-map
+        ("M-0"       . treemacs-select-window)
+        ("C-x t 1"   . treemacs-delete-other-windows)
+        ("C-x t t"   . treemacs)
+        ("C-x t B"   . treemacs-bookmark)
+        ("C-x t C-t" . treemacs-find-file)
+        ("C-x t M-t" . treemacs-find-tag)))
 ;; User-Defined init.el ends here

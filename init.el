@@ -42,10 +42,12 @@
 ;;   )
 
 (setq c-default-style "gnu")
+(setq c-basic-offset 4)
 (setq-default tab-width 4)
 
 (setq-default whitespace-line-column 80
-	      whitespace-style       '(face lines-tail))
+			  whitespace-style       '(face lines-tail))
+(add-hook 'prog-mode-hook 'whitespace-mode)
 
 ;(global-set-key (kbd "<backtab>") 'untab-region)
 ;(global-set-key (kbd "<tab>") 'tab-region)
